@@ -1361,49 +1361,43 @@ void BleGamepad::taskServer(void *pvParameter)
 {
     BleGamepad *BleGamepadInstance = (BleGamepad *)pvParameter; // static_cast<BleGamepad *>(pvParameter);
 
-    // Use the procedure below to set a custom Bluetooth MAC address
-    // Compiler adds 0x02 to the last value of board's base MAC address to get the BT MAC address, so take 0x02 away from the value you actually want when setting
-    //uint8_t newMACAddress[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF - 0x02};
-    //esp_base_mac_addr_set(&newMACAddress[0]); // Set new MAC address 
-    
     NimBLEDevice::init(BleGamepadInstance->deviceName);
     NimBLEServer *pServer = NimBLEDevice::createServer();
     pServer->setCallbacks(BleGamepadInstance->connectionStatus);
 
     BleGamepadInstance->hid = new NimBLEHIDDevice(pServer);
-
     BleGamepadInstance->inputGamepad = BleGamepadInstance->hid->inputReport(BleGamepadInstance->configuration.getHidReportId()); // <-- input REPORTID from report map
     BleGamepadInstance->connectionStatus->inputGamepad = BleGamepadInstance->inputGamepad;
 
     BleGamepadInstance->hid->manufacturer()->setValue(BleGamepadInstance->deviceManufacturer);
 
     NimBLEService *pService = pServer->getServiceByUUID(SERVICE_UUID_DEVICE_INFORMATION);
-	
-	BLECharacteristic* pCharacteristic_Model_Number = pService->createCharacteristic(
+    
+    BLECharacteristic* pCharacteristic_Model_Number = pService->createCharacteristic(
       CHARACTERISTIC_UUID_MODEL_NUMBER,
       NIMBLE_PROPERTY::READ
     );
     pCharacteristic_Model_Number->setValue(modelNumber);
-	
-	BLECharacteristic* pCharacteristic_Software_Revision = pService->createCharacteristic(
+    
+    BLECharacteristic* pCharacteristic_Software_Revision = pService->createCharacteristic(
       CHARACTERISTIC_UUID_SOFTWARE_REVISION,
       NIMBLE_PROPERTY::READ
     );
     pCharacteristic_Software_Revision->setValue(softwareRevision);
-	
-	BLECharacteristic* pCharacteristic_Serial_Number = pService->createCharacteristic(
+    
+    BLECharacteristic* pCharacteristic_Serial_Number = pService->createCharacteristic(
       CHARACTERISTIC_UUID_SERIAL_NUMBER,
       NIMBLE_PROPERTY::READ
     );
     pCharacteristic_Serial_Number->setValue(serialNumber);
-	
-	BLECharacteristic* pCharacteristic_Firmware_Revision = pService->createCharacteristic(
+    
+    BLECharacteristic* pCharacteristic_Firmware_Revision = pService->createCharacteristic(
       CHARACTERISTIC_UUID_FIRMWARE_REVISION,
       NIMBLE_PROPERTY::READ
     );
     pCharacteristic_Firmware_Revision->setValue(firmwareRevision);
-	
-	BLECharacteristic* pCharacteristic_Hardware_Revision = pService->createCharacteristic(
+    
+    BLECharacteristic* pCharacteristic_Hardware_Revision = pService->createCharacteristic(
       CHARACTERISTIC_UUID_HARDWARE_REVISION,
       NIMBLE_PROPERTY::READ
     );
@@ -1412,16 +1406,13 @@ void BleGamepad::taskServer(void *pvParameter)
     BleGamepadInstance->hid->pnp(0x01, vid, pid, guidVersion);
     BleGamepadInstance->hid->hidInfo(0x00, 0x01);
 
-	// NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);
-	NimBLEDevice::setSecurityAuth(true, false, false); // enable bonding, no MITM, no SC
-
+    // Activer la sécurité avec un code PIN
+    NimBLEDevice::setSecurityAuth(true, true, true); // Enable bonding, MITM, Secure Connections
+    NimBLEDevice::setSecurityPasskey(123456);        // Définir un code PIN fixe
+    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY); // Configurer la capacité d'entrée pour afficher le PIN
 
     uint8_t *customHidReportDescriptor = new uint8_t[hidReportDescriptorSize];
     memcpy(customHidReportDescriptor, tempHidReportDescriptor, hidReportDescriptorSize);
-
-    // Testing
-    //for (int i = 0; i < hidReportDescriptorSize; i++)
-    //    Serial.printf("%02x", customHidReportDescriptor[i]);
 
     BleGamepadInstance->hid->reportMap((uint8_t *)customHidReportDescriptor, hidReportDescriptorSize);
     BleGamepadInstance->hid->startServices();
@@ -1437,3 +1428,4 @@ void BleGamepad::taskServer(void *pvParameter)
     ESP_LOGD(LOG_TAG, "Advertising started!");
     vTaskDelay(portMAX_DELAY); // delay(portMAX_DELAY);
 }
+
